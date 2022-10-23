@@ -117,7 +117,7 @@ def merge_history_file(dir, output) -> pd.DataFrame:
 if __name__ == '__main__':
     # download_spot_klines_range('ETHUSDT', '1d', start=datetime(2021, 9, 27), end=datetime(2022, 8, 31))
     # merge_history_file('ETHUSDT/1d', 'ETHUSDT/ETHUSDT-1d.csv')
-    download_spot_klines_range('BTCUSDT', '1m', start=datetime(2022, 9, 15), end=datetime(2022, 10, 4))
-    merge_history_file('BTCUSDT/1m', 'BTCUSDT/BTCUSDT-1m-latest10.csv')
+    download_spot_klines_range('ETHUSDT', '1m', start=datetime(2021, 10, 17), end=datetime(2022, 10, 16))
+    merge_history_file('ETHUSDT/1m', 'ETHUSDT/ETHUSDT-1m.csv')
 
 

@@ -1,8 +1,6 @@
 import pandas as pd
 from datetime import datetime, timedelta
 from Account import Account
-from logbook import Logger
-import logbook
 import globalConf
 global log
 log = globalConf.getShareLogger()
@@ -115,22 +113,34 @@ while True:
                 ac.sell(qt_start_time, 1, ac.avg_price * (1 + ac.stop_profit))
                 sell_completed_flag = 1
 
-            # 获利回调出场
+            # 达到买入仓位的0.4%盈利，出场
             if sell_completed_flag != 1:
                 if ac.buy_type == 1 or ac.buy_type == 2:
                     if ac.buy_type == 1:
                         profit = (n_maxprice-ac.avg_price)/ac.avg_price
+                        price = ac.avg_price * (1 + 0.004)
                     if ac.buy_type == 2:
                         profit = (ac.avg_price-n_minprice)/ac.avg_price
-                if max_profit < profit:
-                    max_profit = profit
-                if max_profit > 0 and profit <= max_profit*0.75:
-                    if ac.buy_type == 1:
-                        price = ac.avg_price * (1 + max_profit * 0.75)
-                    if ac.buy_type == 2:
-                        price = ac.avg_price * (1 - max_profit * 0.75)
-                    ac.sell(qt_start_time, 2, price)
-                    max_profit = 0
+                        price = ac.avg_price * (1 - 0.004)
+                    if profit >= 0.004:
+                        ac.sell(qt_start_time, 2, price)
+
+            # 获利回调出场 最高后的75%出场
+            # if sell_completed_flag != 1:
+            #     if ac.buy_type == 1 or ac.buy_type == 2:
+            #         if ac.buy_type == 1:
+            #             profit = (n_maxprice-ac.avg_price)/ac.avg_price
+            #         if ac.buy_type == 2:
+            #             profit = (ac.avg_price-n_minprice)/ac.avg_price
+            #     if max_profit < profit:
+            #         max_profit = profit
+            #     if max_profit > 0 and profit <= max_profit*0.75:
+            #         if ac.buy_type == 1:
+            #             price = ac.avg_price * (1 + max_profit * 0.75)
+            #         if ac.buy_type == 2:
+            #             price = ac.avg_price * (1 - max_profit * 0.75)
+            #         ac.sell(qt_start_time, 2, price)
+            #         max_profit = 0
 
             # 固定持有30分钟出场
             # if len(ac.buy_records) > 0 and qt_start_time >= ac.buy_records.loc[0]['buytime'] + timedelta(minutes=30):
