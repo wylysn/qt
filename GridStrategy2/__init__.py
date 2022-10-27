@@ -19,30 +19,33 @@ data.index = pd.DatetimeIndex(data.index)
 #将时间顺序升序，符合时间序列
 data = data.sort_index(ascending=True)
 
-#最开始10天行情
+#最开始12小时行情
 start_date = datetime.strptime('2022-07-17 08:00:00', '%Y-%m-%d %H:%M:%S')
-end_date = datetime.strptime('2022-07-27 07:59:00', '%Y-%m-%d %H:%M:%S')
+end_date = datetime.strptime('2022-07-17 19:59:00', '%Y-%m-%d %H:%M:%S')
 final_date = datetime.strptime('2022-10-17 07:59:00', '%Y-%m-%d %H:%M:%S')
 
-ac = FutureAccount(1000000, 50000, 0.048)
+ac = FutureAccount(1000000, 50000, 0.011)
 max_profit = 0
 qt_start_time = end_date + timedelta(minutes=1)
 
 n_loc = data.loc[qt_start_time, ['Open', 'High', 'Low']]
+add_unit = 5
+minus_unit = 5
+empty_unit = 25
 
 while True:
     log.info('--------------------------------')
     log.info('当前时间：' + str(qt_start_time))
 
     if n_loc is not None:
-        perioddata = data.loc[start_date:end_date]    #入场1数据集（10天数据）
+        perioddata = data.loc[start_date:end_date]    #入场1数据集（12小时数据）
         # 求最大值、最小值
         # maxdf = perioddata.mean()
         # maxprice = maxdf['Close']
         # log.info('前10天平均价格：' + str(maxprice))
         maxdf = perioddata.max()
         maxprice = maxdf['High']
-        log.info('前10天最高价格：' + str(maxprice))
+        log.info('前12小时最高价格：' + str(maxprice))
 
         n_maxprice = n_loc['High']
         n_minprice = n_loc['Low']
@@ -60,7 +63,7 @@ while True:
         if len(ac.position) > 0 and flag == 0:
             avg_price = ac.position.loc[0]['avgprice']
 
-            # 止损：损失跌破总体仓位成本的10%
+            # 止损：损失跌破总体仓位成本的1.1%
             if n_avgprice >= avg_price * (1 + ac.stop_profit):
                 log.info('止损')
                 ac.order(qt_start_time, 1, 5, 1, avg_price * (1 + ac.stop_profit), None, ac.position.loc[0]['positioncnt'], '止损')
@@ -82,14 +85,14 @@ while True:
                 if last_tradeprice_out == None:
                     last_tradeprice_out = init_tradeprice
                     log.info('最后一次减仓价格：' + str(last_tradeprice_out))
-                if n_avgprice <= init_tradeprice - 60:
+                if n_avgprice <= init_tradeprice - empty_unit:
                     log.info('平仓')
-                    ac.order(qt_start_time, 1, 5, 1, init_tradeprice - 60, None, ac.position.loc[0]['positioncnt'], '平仓')
+                    ac.order(qt_start_time, 1, 5, 1, init_tradeprice - empty_unit, None, ac.position.loc[0]['positioncnt'], '平仓')
                     flag = 1
                 # elif n_avgprice <= last_tradeprice_out - 2 and n_avgprice >= init_tradeprice - 16:
-                elif n_avgprice <= last_tradeprice_out - 6:
+                elif n_avgprice <= last_tradeprice_out - minus_unit:
                     log.info('减仓')
-                    ac.order(qt_start_time, 2, 5, 1, last_tradeprice_out - 6, None, ac.position.loc[0]['positioncnt'] * 0.5, '减仓')
+                    ac.order(qt_start_time, 2, 5, 1, last_tradeprice_out - minus_unit, None, ac.position.loc[0]['positioncnt'] * 0.5, '减仓')
                     flag = 1
 
         initial_side = None
@@ -112,9 +115,9 @@ while True:
             elif initial_side == 2:
                 inverse_side = 1
             # 以初始买入价格A1为基准，价格每上涨10u就买空**2个单位
-            if n_avgprice >= last_tradeprice_in + 6 and len(ac.position) > 0:
+            if n_avgprice >= last_tradeprice_in + add_unit and len(ac.position) > 0:
                 log.info('加仓')
-                ac.order(qt_start_time, 0, 5, 2, last_tradeprice_in + 6, ac.unit * 2, None,
+                ac.order(qt_start_time, 0, 5, 2, last_tradeprice_in + add_unit, ac.unit * 2, None,
                          '加仓')
                 avg_price = ac.position.loc[0]['avgprice']
                 log.info('avgprice=' + str(avg_price))

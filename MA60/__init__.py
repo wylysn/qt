@@ -7,7 +7,8 @@ import globalConf
 global log
 log = globalConf.getShareLogger()
 
-data = pd.read_csv('/Users/wangyilu/PycharmProjects/qt/BTCUSDT/BTCUSDT-1m-latest10.csv')
+data = pd.read_csv('/Users/wangyilu/PycharmProjects/qt/ETHUSDT/ETHUSDT-1m-202110-202210.csv')
+# data = pd.read_csv('/Users/wangyilu/PycharmProjects/qt/BTCUSDT/BTCUSDT-1m-latest10.csv')
 # data = pd.read_csv('/Users/wangyilu/PycharmProjects/qt/BTCUSDT/BTCUSDT-1m.csv')
 # data = pd.read_csv('BTCUSDT-1m.csv')
 data = data.loc[:, ['otime', 'Open', 'Close', 'High', 'Low', 'Volume']]
@@ -25,14 +26,16 @@ data.loc[:, 'MA60'] = ma60List
 ma600List = data['Close'].rolling(1440).mean()
 data.loc[:, 'MA600'] = ma600List
 
-data.to_excel('MA60-600.xlsx')
+# data.to_excel('MA60-600.xlsx')
 
-start_date = datetime.strptime('2022-09-15 08:00:00', '%Y-%m-%d %H:%M:%S')
-final_date = datetime.strptime('2022-10-05 07:59:00', '%Y-%m-%d %H:%M:%S')
+start_date = datetime.strptime('2022-07-17 08:00:00', '%Y-%m-%d %H:%M:%S')
+final_date = datetime.strptime('2022-10-17 07:59:00', '%Y-%m-%d %H:%M:%S')
+# start_date = datetime.strptime('2022-09-15 08:00:00', '%Y-%m-%d %H:%M:%S')
+# final_date = datetime.strptime('2022-10-05 07:59:00', '%Y-%m-%d %H:%M:%S')
 # start_date = datetime.strptime('2021-10-01 08:00:00', '%Y-%m-%d %H:%M:%S')
 # final_date = datetime.strptime('2022-10-01 07:59:00', '%Y-%m-%d %H:%M:%S')
 
-ac = Account(1000000, 100000, 0.01, None, None)
+ac = Account(1000000, 1000000, 0.0067, None, None)
 max_profit = 0
 qt_start_time = start_date + timedelta(minutes=1440)
 
@@ -49,12 +52,13 @@ while True:
         log.info('MA60：' + str(data.loc[qt_start_time, 'MA60']) + ';MA600：' + str(data.loc[qt_start_time, 'MA600']))
         flag = 0    #控制一个循环内买入不能立即卖出
 
+        pre_qt_start_time = qt_start_time+timedelta(minutes=-1)
         # 进场判断
-        if data.loc[qt_start_time, 'MA60'] > data.loc[qt_start_time, 'MA600'] and ac.flag4 == 0:
+        if data.loc[qt_start_time, 'MA60'] > data.loc[qt_start_time, 'MA600'] and data.loc[pre_qt_start_time, 'MA60'] <= data.loc[pre_qt_start_time, 'MA600'] and ac.flag4 == 0:
             is_success = ac.buy(qt_start_time, 4, 1, n_maxprice, ac.unit)
             if is_success == 1:
                 flag = 1
-        elif data.loc[qt_start_time, 'MA60'] < data.loc[qt_start_time, 'MA600'] and ac.flag4 == 0:
+        elif data.loc[qt_start_time, 'MA60'] < data.loc[qt_start_time, 'MA600'] and data.loc[pre_qt_start_time, 'MA60'] >= data.loc[pre_qt_start_time, 'MA600'] and ac.flag4 == 0:
             is_success = ac.buy(qt_start_time, 4, 2, n_minprice, ac.unit)
             if is_success == 1:
                 flag = 1
