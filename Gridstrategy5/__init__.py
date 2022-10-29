@@ -20,11 +20,11 @@ data.index = pd.DatetimeIndex(data.index)
 data = data.sort_index(ascending=True)
 
 #最开始12小时行情
-start_date = datetime.strptime('2022-07-17 00:00:00', '%Y-%m-%d %H:%M:%S')
-end_date = datetime.strptime('2022-07-17 07:59:00', '%Y-%m-%d %H:%M:%S')
+start_date = datetime.strptime('2022-04-17 04:00:00', '%Y-%m-%d %H:%M:%S')
+end_date = datetime.strptime('2022-04-17 07:59:00', '%Y-%m-%d %H:%M:%S')
 final_date = datetime.strptime('2022-10-17 07:59:00', '%Y-%m-%d %H:%M:%S')
 
-ac = FutureAccount(1000000, 50000, 0.139)
+ac = FutureAccount(1000000, 50000, 0.153)
 trade_count_unit = 20
 max_profit = 0
 qt_start_time = end_date + timedelta(minutes=1)
@@ -43,7 +43,7 @@ while True:
         # 求前10天平均价
         maxdf = perioddata.mean()
         maxprice = maxdf['Close']
-        log.info('前8小时平均价格：' + str(maxprice))
+        log.info('前4小时平均价格：' + str(maxprice))
         # 求最大值、最小值
         # maxdf = perioddata.max()
         # maxprice = maxdf['High']
@@ -66,14 +66,55 @@ while True:
             ac.order4(qt_start_time, 0, 5, 2, maxprice + 40, trade_count_unit, '建仓')
             flag = 1
 
+        initial_side = None
+        init_tradeprice = None
+        last_tradeprice_in = None
+        if len(ac.singleloop_trade_records) > 0 and flag == 0:
+            initial_side = ac.singleloop_trade_records.loc[0]['side']
+            init_tradeprice = ac.singleloop_trade_records.loc[0]['tradeprice']
+            last_tradeprice_in = \
+            ac.singleloop_trade_records.loc[ac.singleloop_trade_records['side'] == initial_side].tail(1).iloc[0][
+                'tradeprice']
+            add_position_count = len(
+                ac.singleloop_trade_records.loc[ac.singleloop_trade_records['side'] == initial_side]) - 1
+            log.info('A1基准价：' + str(init_tradeprice))
+            log.info('最后一次加仓价格：' + str(last_tradeprice_in))
+            last_tradeprice_out = None
+            if initial_side == 1:
+                inverse_side = 2
+            elif initial_side == 2:
+                inverse_side = 1
+            # 以初始买入价格A1为基准，价格每上涨1.5倍网格度就买空1个单位
+            will_buy_price = last_tradeprice_in + add_unit * (1.5 ** add_position_count)
+            if n_avgprice >= will_buy_price and len(ac.position) > 0:
+                log.info('加仓')
+                trade_count = 0
+                add_position_flag = 1
+                if add_position_count < 5:
+                    trade_count = trade_count_unit;
+                elif add_position_count < 6:
+                    trade_count = trade_count_unit * 2
+                elif add_position_count < 7:
+                    trade_count = trade_count_unit * 4
+                else:
+                    log.info('最多加仓7次')
+                    add_position_flag = 0
+                if add_position_flag == 1:
+                    ac.order4(qt_start_time, 0, 5, 2, will_buy_price, trade_count,
+                              '加仓')
+                    flag = 1
+                # avg_price = ac.position.loc[0]['avgprice']
+                # log.info('avgprice=' + str(avg_price))
+
         if len(ac.position) > 0 and flag == 0:
-            avg_price = ac.position.loc[0]['avgprice']
+            position_price = ac.position.loc[0]['avgprice']
+            position_cnt = ac.position.loc[0]['positioncnt']
 
             # 止损：损失跌破总体仓位成本的比例
-            stop_price = avg_price * (1 + ac.stop_profit)
+            stop_price = position_price * (1 + ac.stop_profit)
             if n_avgprice >= stop_price:
                 log.info('止损')
-                ac.order4(qt_start_time, 1, 5, 1, stop_price, ac.position.loc[0]['positioncnt'], '止损')
+                ac.order4(qt_start_time, 1, 5, 1, stop_price, position_cnt, '止损')
                 flag = 1
             else:
                 last_tradeprice_out = None
@@ -95,50 +136,25 @@ while True:
                     last_tradeprice_out = init_tradeprice
                     log.info('最后一次减仓价格：' + str(last_tradeprice_out))
 
-                if n_avgprice <= init_tradeprice - 30:
-                    ac.order4(qt_start_time, 2, 5, 1, (init_tradeprice - 30), ac.position.loc[0]['positioncnt'],
-                             '平仓')
-                elif n_avgprice <= init_tradeprice - 20 and init_tradeprice == last_tradeprice_out:
-                    ac.order4(qt_start_time, 2, 5, 1, (init_tradeprice - 20), ac.position.loc[0]['positioncnt']/2,
-                             '首次减仓')
+                if 0 < position_cnt < 12*trade_count_unit:
+                    if n_avgprice <= init_tradeprice - 30:
+                        log.info('未达到12个单位获利减仓')
+                        ac.order4(qt_start_time, 2, 5, 1, (init_tradeprice - 30), position_cnt,
+                                 '平仓')
+                    elif n_avgprice <= init_tradeprice - 20 and init_tradeprice == last_tradeprice_out:
+                        ac.order4(qt_start_time, 2, 5, 1, (init_tradeprice - 20), position_cnt/10,
+                                 '首次减仓')
+                elif position_cnt >= 12*trade_count_unit:
+                    if n_avgprice <= position_price - 20:
+                        log.info('已达到12个单位获利减仓')
+                        ac.order4(qt_start_time, 2, 5, 1, (position_price - 30), position_cnt,
+                                  '平仓')
+                    # elif n_avgprice <= position_price - 20 and init_tradeprice == last_tradeprice_out:
+                    #     log.info('已达到12个单位获利减仓')
+                    #     ac.order4(qt_start_time, 2, 5, 1, (position_price - 20), position_cnt / 10,
+                    #               '首次减仓')
 
-        initial_side = None
-        init_tradeprice = None
-        last_tradeprice_in = None
-        if len(ac.singleloop_trade_records) > 0 and flag == 0:
-            initial_side = ac.singleloop_trade_records.loc[0]['side']
-            init_tradeprice = ac.singleloop_trade_records.loc[0]['tradeprice']
-            last_tradeprice_in = ac.singleloop_trade_records.loc[ac.singleloop_trade_records['side'] == initial_side].tail(1).iloc[0]['tradeprice']
-            add_position_count = len(ac.singleloop_trade_records.loc[ac.singleloop_trade_records['side'] == initial_side]) - 1
-            log.info('A1基准价：' + str(init_tradeprice))
-            log.info('最后一次加仓价格：' + str(last_tradeprice_in))
-            last_tradeprice_out = None
-            if initial_side == 1:
-                inverse_side = 2
-            elif initial_side == 2:
-                inverse_side = 1
-            # 以初始买入价格A1为基准，价格每上涨1.5倍网格度就买空1个单位
-            will_buy_price = last_tradeprice_in + add_unit * (1.5 ** add_position_count)
-            if n_avgprice >= will_buy_price and len(ac.position) > 0:
-                log.info('加仓')
-                trade_count = 0
-                add_position_flag = 1
-                if add_position_count < 3:
-                    trade_count = trade_count_unit;
-                elif add_position_count < 4:
-                    trade_count = trade_count_unit * 2
-                elif add_position_count < 5:
-                    trade_count = trade_count_unit * 4
-                elif add_position_count < 6:
-                    trade_count = trade_count_unit * 8
-                else:
-                    log.info('最多加仓6次')
-                    add_position_flag = 0
-                if add_position_flag == 1:
-                    ac.order4(qt_start_time, 0, 5, 2, will_buy_price, trade_count,
-                          '加仓')
-                # avg_price = ac.position.loc[0]['avgprice']
-                # log.info('avgprice=' + str(avg_price))
+
 
 
     start_date = start_date + timedelta(minutes=1)
@@ -152,15 +168,15 @@ while True:
 
     if qt_start_time > final_date:
         if len(ac.position) > 0:
-            avg_price = ac.position.loc[0]['avgprice']
+            position_price = ac.position.loc[0]['avgprice']
             positioncnt = ac.position.loc[0]['positioncnt']
             log.info('可用余额=' + str(ac.all_money))
             if ac.position.loc[0]['side'] == 1:
-                log.info('持仓=' + str(avg_price) + '*' + str(positioncnt) + '=' + str(avg_price * positioncnt))
-                log.info('最后有这么多钱：' + str(ac.all_money + avg_price * positioncnt))
+                log.info('持仓=' + str(position_price) + '*' + str(positioncnt) + '=' + str(position_price * positioncnt))
+                log.info('最后有这么多钱：' + str(ac.all_money + position_price * positioncnt))
             else:
-                postion_actual_money = positioncnt * avg_price * (1 + (avg_price - n_avgprice) / avg_price)
-                log.info('持仓=' + str(positioncnt) + '*' + str(avg_price) + '*' + '(1+(' + str(avg_price) + '-' + str(n_avgprice) + '）/' + str(avg_price) + ')=' + str(postion_actual_money))
+                postion_actual_money = positioncnt * position_price * (1 + (position_price - n_avgprice) / position_price)
+                log.info('持仓=' + str(positioncnt) + '*' + str(position_price) + '*' + '(1+(' + str(position_price) + '-' + str(n_avgprice) + '）/' + str(position_price) + ')=' + str(postion_actual_money))
                 log.info('最后有这么多钱：' + str(ac.all_money + postion_actual_money))
         else:
             log.info('最后有这么多钱：' + str(ac.all_money))
