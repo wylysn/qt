@@ -123,7 +123,7 @@ if __name__ == '__main__':
     # download_spot_klines_range('BTCUSDT', '1m', start=datetime(2022, 9, 15), end=datetime(2022, 10, 4))
     # merge_history_file('BTCUSDT/1m', 'BTCUSDT/BTCUSDT-1m-latest10.csv')
     # 1d数据
-    download_spot_klines_range('BTCUSDT', '1d', start=datetime(2021, 10, 1), end=datetime(2022, 9, 30))
-    merge_history_file('BTCUSDT/1d', 'BTCUSDT/BTCUSDT-1d.csv')
+    download_spot_klines_range('BTCUSDT', '1m', start=datetime(2023, 2, 20), end=datetime(2023, 3, 2))
+    merge_history_file('BTCUSDT/1m', 'BTCUSDT/BTCUSDT-1d.csv')
 
 

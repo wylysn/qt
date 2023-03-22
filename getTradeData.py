@@ -84,11 +84,14 @@ def read_history_file(zip_file, csv_file) -> pd.DataFrame:
     :param csv_file: csv文件路径
     """
     # ETHUSDT-5m-2017-08.csv
-    zf = ZipFile(zip_file)
-    file = zf.open(csv_file)
-    df = pd.read_csv(file, header=None, names=columns)
-    file.close()
-    zf.close()
+    try:
+        zf = ZipFile(zip_file)
+        file = zf.open(csv_file)
+        df = pd.read_csv(file, header=None, names=columns)
+        file.close()
+        zf.close()
+    except Exception as e:
+        print('============'+zip_file)
     return df
 
 
@@ -115,9 +118,12 @@ def merge_history_file(dir, output) -> pd.DataFrame:
 
 
 if __name__ == '__main__':
-    # download_spot_klines_range('ETHUSDT', '1d', start=datetime(2021, 9, 27), end=datetime(2022, 8, 31))
-    # merge_history_file('ETHUSDT/1d', 'ETHUSDT/ETHUSDT-1d.csv')
-    download_spot_klines_range('ETHUSDT', '1m', start=datetime(2021, 10, 17), end=datetime(2022, 10, 16))
-    merge_history_file('ETHUSDT/1m', 'ETHUSDT/ETHUSDT-1m.csv')
+    # download_spot_klines_range('ETHUSDT', '1m', start=datetime(2022, 1, 1), end=datetime(2022, 12, 1))
+    # merge_history_file('ETHUSDT/1m', 'ETHUSDT/ETHUSDT-1m.csv')
+    download_spot_klines_range('ETHUSDT', '1m', start=datetime(2023, 2, 20), end=datetime(2023, 3, 2))
+    merge_history_file('ETHUSDT/1m', 'ETHUSDT/ETHUSDT-1m-20230220.csv')
+    data = pd.read_csv('./ETHUSDT/ETHUSDT-1m-20230220.csv')
+    data['Open time'] = pd.to_datetime(data['Open time']/1000, unit='s')
+    data.to_csv('./ETHUSDT/ETHUSDT-1m-20230220_time.csv')
 
 
